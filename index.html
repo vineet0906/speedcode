@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speedcode 2026</title>
+
+<!-- Fonts. If venue wifi dies, the fallback stacks below still look deliberate. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   TOKENS
+   Direction: the grey-green of a flatbed film editor. Mid-tone
+   ground (rare on the web, reads as chosen), film-leader off-white
+   type, one amber for live/active state, one cue red for danger.
+   Change these six values and the whole app re-skins.
+   ═══════════════════════════════════════════════════════════════ */
+:root{
+  --console:        #39403C;   /* ground */
+  --console-deep:   #2B312E;   /* recessed panels */
+  --console-raised: #454D48;   /* raised surfaces */
+  --leader:         #E8E4D9;   /* type */
+  --amber:          #E0A93B;   /* active / live — the only bright thing */
+  --cue:            #D9483B;   /* record / destructive only */
+
+  --leader-dim: color-mix(in srgb, var(--leader) 58%, transparent);
+  --hair:       color-mix(in srgb, var(--leader) 16%, transparent);
+  --hair-soft:  color-mix(in srgb, var(--leader) 8%, transparent);
+
+  --display: 'Archivo', 'Arial Narrow', 'Helvetica Neue', sans-serif;
+  --body:    'Archivo', system-ui, -apple-system, sans-serif;
+  --mono:    'DM Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --pad: clamp(1.25rem, 4vw, 3.5rem);
+  --radius: 3px;                /* hardware, not bubbles */
+  --t: 120ms cubic-bezier(.2,0,.2,1);
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0;
+  background:var(--console);
+  color:var(--leader);
+  font-family:var(--body);
+  font-size:16px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* Grain. One layer, huge perceived-quality jump. */
+body::after{
+  content:""; position:fixed; inset:0; z-index:9998; pointer-events:none;
+  opacity:.30; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+:focus-visible{ outline:2px solid var(--amber); outline-offset:3px; }
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:.01ms !important; transition-duration:.01ms !important; }
+}
+
+/* ═══ TYPE ══════════════════════════════════════════════════════ */
+.display{
+  font-family:var(--display);
+  font-variation-settings:'wdth' 118,'wght' 800;
+  font-size:clamp(2.6rem, 8vw, 6.5rem);
+  line-height:.92; letter-spacing:-.02em; margin:0;
+  text-transform:uppercase;
+}
+.display--sm{ font-size:clamp(1.6rem,3.6vw,2.6rem); font-variation-settings:'wdth' 110,'wght' 700; }
+.lede{ font-size:clamp(1rem,1.6vw,1.15rem); color:var(--leader-dim); max-width:52ch; margin:1.25rem 0 0; }
+
+/* Timecode. Used ONLY where a number is genuinely positional or
+   sequential — never as decoration. */
+.tc{
+  font-family:var(--mono); font-size:.72rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--leader-dim);
+}
+.tc--amber{ color:var(--amber); }
+
+/* ═══ LAYOUT ════════════════════════════════════════════════════ */
+.wrap{ max-width:1180px; margin:0 auto; padding-inline:var(--pad); }
+.section{ padding-block:clamp(3rem,7vw,6rem); border-top:1px solid var(--hair-soft); }
+.section:first-of-type{ border-top:0; }
+.section__head{ display:flex; align-items:baseline; gap:1rem; margin-bottom:2rem; flex-wrap:wrap; }
+.grid{ display:grid; gap:1px; background:var(--hair-soft); border:1px solid var(--hair-soft); }
+.grid--3{ grid-template-columns:repeat(3,1fr); }
+.grid--2{ grid-template-columns:repeat(2,1fr); }
+.row{ display:flex; gap:.75rem; flex-wrap:wrap; align-items:center; }
+@media (max-width:760px){ .grid--3,.grid--2{ grid-template-columns:1fr; } }
+
+/* ═══ HEADER ════════════════════════════════════════════════════ */
+.bar{
+  position:sticky; top:0; z-index:80;
+  display:flex; align-items:center; gap:1.25rem;
+  padding:.75rem var(--pad);
+  background:color-mix(in srgb, var(--console) 88%, transparent);
+  backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--hair);
+}
+.mark{
+  font-family:var(--display); font-variation-settings:'wdth' 62,'wght' 900;
+  font-size:1.05rem; letter-spacing:.04em; text-transform:uppercase;
+}
+.bar__spacer{ flex:1; }
+.live{ display:inline-flex; align-items:center; gap:.45rem; }
+.live__dot{
+  width:7px; height:7px; border-radius:50%; background:var(--amber);
+  box-shadow:0 0 0 0 color-mix(in srgb,var(--amber) 60%,transparent);
+  animation:pulse 2.2s infinite;
+}
+@keyframes pulse{ 70%{ box-shadow:0 0 0 7px transparent; } 100%{ box-shadow:0 0 0 0 transparent; } }
+.kbd{
+  font-family:var(--mono); font-size:.7rem; padding:.15rem .4rem;
+  border:1px solid var(--hair); border-radius:2px; color:var(--leader-dim);
+}
+
+/* ═══ HERO / LETTERBOX ══════════════════════════════════════════ */
+.hero{ position:relative; padding-block:clamp(3rem,9vw,7rem); }
+.hero::before,.hero::after{
+  content:""; position:absolute; left:0; right:0; height:14px;
+  background:var(--console-deep); pointer-events:none;
+}
+.hero::before{ top:0; } .hero::after{ bottom:0; }
+
+/* ═══ PANELS ════════════════════════════════════════════════════ */
+.panel{ background:var(--console-deep); padding:1.5rem; }
+.panel--raised{ background:var(--console-raised); }
+.panel__label{ display:block; margin-bottom:.6rem; }
+.readout{
+  font-family:var(--mono); font-size:clamp(1.8rem,4vw,2.6rem);
+  font-weight:500; line-height:1; letter-spacing:-.02em;
+}
+.readout__unit{ font-size:.9rem; color:var(--leader-dim); margin-left:.35rem; }
+
+/* ═══ SIGNATURE: THE WIPE ═══════════════════════════════════════
+   A wipe is a film transition. Move the pointer and the second
+   layer is revealed through it. This is the one memorable thing —
+   everything else on the page stays quiet.                        */
+.wipe{
+  position:relative; overflow:hidden; cursor:crosshair;
+  border:1px solid var(--hair); background:var(--console-deep);
+  min-height:clamp(260px,38vw,420px);
+  display:grid;
+}
+.wipe__layer{
+  grid-area:1/1; display:grid; place-content:center; text-align:center;
+  padding:clamp(1.5rem,5vw,3rem);
+}
+.wipe__layer--top{
+  background:var(--leader); color:var(--console-deep);
+  clip-path:circle(var(--wr,0px) at var(--wx,50%) var(--wy,50%));
+  transition:clip-path 130ms cubic-bezier(.2,0,.2,1);
+}
+.wipe__hint{ position:absolute; bottom:.9rem; left:1rem; pointer-events:none; }
+
+/* ═══ CONTROLS ══════════════════════════════════════════════════ */
+.btn{
+  font-family:var(--body); font-size:.82rem; font-weight:600;
+  letter-spacing:.08em; text-transform:uppercase;
+  padding:.7rem 1.3rem; border-radius:var(--radius); cursor:pointer;
+  border:1px solid var(--leader); background:var(--leader); color:var(--console-deep);
+  transition:background var(--t), color var(--t), border-color var(--t), transform var(--t);
+}
+.btn:hover{ background:var(--amber); border-color:var(--amber); }
+.btn:active{ transform:translateY(1px); }
+.btn--ghost{ background:transparent; color:var(--leader); border-color:var(--hair); }
+.btn--ghost:hover{ background:transparent; border-color:var(--amber); color:var(--amber); }
+.btn--cue{ background:transparent; color:var(--cue); border-color:var(--cue); }
+.btn--cue:hover{ background:var(--cue); color:var(--leader); border-color:var(--cue); }
+
+.field{ display:block; }
+.field__label{ display:block; margin-bottom:.4rem; }
+.input{
+  width:100%; font-family:var(--mono); font-size:.9rem;
+  padding:.7rem .85rem; color:var(--leader);
+  background:var(--console-deep); border:1px solid var(--hair);
+  border-radius:var(--radius); transition:border-color var(--t);
+}
+.input:focus{ border-color:var(--amber); outline:none; }
+.input::placeholder{ color:color-mix(in srgb,var(--leader) 30%,transparent); }
+
+.tag{
+  display:inline-block; font-family:var(--mono); font-size:.7rem;
+  letter-spacing:.08em; text-transform:uppercase;
+  padding:.2rem .55rem; border:1px solid var(--hair); border-radius:2px;
+}
+.tag--amber{ border-color:var(--amber); color:var(--amber); }
+.tag--cue{ border-color:var(--cue); color:var(--cue); }
+
+/* Scrub bar — a real range input, so keyboard + a11y come free. */
+.scrub{ -webkit-appearance:none; appearance:none; width:100%; height:26px; background:transparent; cursor:pointer; }
+.scrub::-webkit-slider-runnable-track{ height:4px; background:var(--hair); border-radius:2px; }
+.scrub::-moz-range-track{ height:4px; background:var(--hair); border-radius:2px; }
+.scrub::-webkit-slider-thumb{
+  -webkit-appearance:none; width:3px; height:22px; margin-top:-9px;
+  background:var(--amber); border:0; border-radius:1px;
+}
+.scrub::-moz-range-thumb{ width:3px; height:22px; background:var(--amber); border:0; border-radius:1px; }
+
+/* ═══ TABLE ═════════════════════════════════════════════════════ */
+.table{ width:100%; border-collapse:collapse; font-size:.9rem; }
+.table th{
+  text-align:left; font-family:var(--mono); font-size:.7rem;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--leader-dim);
+  padding:.6rem .8rem; border-bottom:1px solid var(--hair);
+}
+.table td{ padding:.7rem .8rem; border-bottom:1px solid var(--hair-soft); }
+.table tbody tr{ transition:background var(--t); }
+.table tbody tr:hover{ background:var(--console-deep); }
+.table .num{ font-family:var(--mono); }
+
+/* ═══ EMPTY STATE ═══════════════════════════════════════════════ */
+.empty{ border:1px dashed var(--hair); padding:2.5rem 1.5rem; text-align:center; }
+
+/* ═══ TOAST ═════════════════════════════════════════════════════ */
+.toasts{ position:fixed; bottom:1.25rem; right:1.25rem; z-index:9000; display:grid; gap:.5rem; }
+.toast{
+  background:var(--leader); color:var(--console-deep);
+  padding:.7rem 1rem; border-radius:var(--radius); font-size:.85rem; font-weight:600;
+  animation:toastIn 200ms cubic-bezier(.2,0,.2,1);
+}
+.toast--cue{ background:var(--cue); color:var(--leader); }
+@keyframes toastIn{ from{ opacity:0; transform:translateY(8px); } }
+
+/* ═══ MODAL ═════════════════════════════════════════════════════ */
+.veil{
+  position:fixed; inset:0; z-index:9100; display:none;
+  place-content:center; padding:1.25rem;
+  background:color-mix(in srgb,var(--console-deep) 82%,transparent);
+  backdrop-filter:blur(3px);
+}
+.veil[data-open]{ display:grid; }
+.modal{
+  background:var(--console); border:1px solid var(--hair);
+  padding:2rem; max-width:460px; width:100%;
+}
+
+/* ═══ CUE PALETTE (⌘K) ══════════════════════════════════════════ */
+.palette{
+  position:fixed; inset:0; z-index:9200; display:none;
+  justify-items:center; align-content:start; padding-top:14vh;
+  background:color-mix(in srgb,var(--console-deep) 78%,transparent);
+  backdrop-filter:blur(4px);
+}
+.palette[data-open]{ display:grid; }
+.palette__box{ width:min(540px,92vw); background:var(--console); border:1px solid var(--hair); }
+.palette__input{
+  width:100%; padding:1rem 1.1rem; font-family:var(--mono); font-size:.95rem;
+  background:transparent; border:0; border-bottom:1px solid var(--hair); color:var(--leader);
+}
+.palette__input:focus{ outline:none; }
+.palette__list{ list-style:none; margin:0; padding:.4rem; max-height:44vh; overflow:auto; }
+.palette__item{
+  padding:.6rem .75rem; border-radius:2px; cursor:pointer;
+  display:flex; justify-content:space-between; gap:1rem; align-items:center;
+}
+.palette__item[aria-selected="true"]{ background:var(--console-raised); }
+
+/* ═══ COUNT-IN ══════════════════════════════════════════════════ */
+.leader{
+  position:fixed; inset:0; z-index:9500; display:grid; place-content:center;
+  background:var(--console-deep);
+}
+.leader__n{
+  font-family:var(--mono); font-size:clamp(4rem,16vw,10rem); font-weight:500;
+  color:var(--leader); line-height:1;
+}
+.leader__ring{
+  position:absolute; inset:50% auto auto 50%; translate:-50% -50%;
+  width:min(38vmin,260px); aspect-ratio:1; border:1px solid var(--hair); border-radius:50%;
+}
+.reveal{ opacity:0; transform:translateY(14px); transition:opacity 500ms ease, transform 500ms cubic-bezier(.2,0,.2,1); }
+.reveal[data-in]{ opacity:1; transform:none; }
+
+/* ═══ FOOTER ════════════════════════════════════════════════════ */
+.foot{ padding:2rem var(--pad) 3rem; border-top:1px solid var(--hair); display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+
+<!-- Count-in. Runs once per session; skip with any key. -->
+<div class="leader" id="leader" hidden>
+  <div class="leader__ring"></div>
+  <div class="leader__n" id="leaderN">3</div>
+</div>
+
+<header class="bar">
+  <span class="mark">Scaffold</span>
+  <span class="tc">v1.0</span>
+  <span class="bar__spacer"></span>
+  <span class="live"><span class="live__dot"></span><span class="tc tc--amber">Live</span></span>
+  <button class="btn btn--ghost" id="soundBtn" style="padding:.4rem .75rem">Sound off</button>
+  <span class="kbd" id="paletteHint">⌘K</span>
+</header>
+
+<!-- ════════════ DELETE EVERYTHING BELOW WHEN YOU START ════════════
+     ...but keep the <style> block above and the <script> at the end.
+     Those two are the actual product. This page is just the parts bin. -->
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <p class="tc reveal">01 — Ideas · Innovation · Impact</p>
+      <h1 class="display reveal" style="margin-top:1rem">Built in<br>two hours</h1>
+      <p class="lede reveal">A parts bin with a point of view. Tokens, type, motion and one signature interaction, already decided — so the only thing left tomorrow is the idea.</p>
+      <div class="row reveal" style="margin-top:2rem">
+        <button class="btn" data-toast="Started">Start</button>
+        <button class="btn btn--ghost" id="openModal">Read the brief</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section__head">
+        <h2 class="display display--sm">The wipe</h2>
+        <span class="tc">Signature — move your pointer across it</span>
+      </div>
+      <div class="wipe" id="wipe" data-wipe-radius="170px">
+        <div class="wipe__layer">
+          <p class="display display--sm">What they see</p>
+          <p class="lede" style="margin-inline:auto">The surface everyone gets.</p>
+        </div>
+        <div class="wipe__layer wipe__layer--top" data-wipe-top>
+          <p class="display display--sm">What's underneath</p>
+          <p class="lede" style="margin-inline:auto; color:inherit; opacity:.7">The same content, seen properly.</p>
+        </div>
+        <span class="tc wipe__hint">Move to reveal</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section__head"><h2 class="display display--sm">Readouts</h2></div>
+      <div class="grid grid--3">
+        <div class="panel"><span class="tc panel__label">Elapsed</span><div class="readout" id="clock">00:00:00</div></div>
+        <div class="panel"><span class="tc panel__label">Entries</span><div class="readout">128<span class="readout__unit">rows</span></div></div>
+        <div class="panel"><span class="tc panel__label">Confidence</span><div class="readout">94<span class="readout__unit">%</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section__head"><h2 class="display display--sm">Controls</h2></div>
+      <div class="grid grid--2">
+        <div class="panel">
+          <span class="tc panel__label">Position</span>
+          <input type="range" class="scrub" id="scrub" min="0" max="100" value="34" aria-label="Position">
+          <div class="row" style="justify-content:space-between">
+            <span class="tc" id="scrubTc">00:00:34:00</span><span class="tc">00:00:100:00</span>
+          </div>
+        </div>
+        <div class="panel">
+          <label class="field">
+            <span class="tc field__label">Search</span>
+            <input class="input" placeholder="Type to filter…" id="filter">
+          </label>
+          <div class="row" style="margin-top:1rem">
+            <span class="tag">Draft</span><span class="tag tag--amber">Active</span><span class="tag tag--cue">Blocked</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section__head"><h2 class="display display--sm">Records</h2><span class="tc">Filter updates live</span></div>
+      <div class="panel" style="padding:0">
+        <table class="table">
+          <thead><tr><th>Item</th><th>State</th><th style="text-align:right">Value</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="empty" hidden>
+        <p class="tc">No matches</p>
+        <p class="lede" style="margin:.5rem auto 1rem">Clear the filter to see all records.</p>
+        <button class="btn btn--ghost" id="clearFilter">Clear filter</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section__head"><h2 class="display display--sm">Actions</h2></div>
+      <div class="row">
+        <button class="btn" data-toast="Saved">Save</button>
+        <button class="btn btn--ghost" data-toast="Exported">Export</button>
+        <button class="btn btn--cue" data-toast="Deleted" data-toast-cue>Delete</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span class="tc">Scaffold — edit suite direction</span>
+  <span class="tc" id="buildTc">Ready</span>
+</footer>
+
+<!-- ════════════ DELETE EVERYTHING ABOVE WHEN YOU START ════════════ -->
+
+<div class="veil" id="veil" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <span class="tc">Brief</span>
+    <h3 class="display display--sm" id="modalTitle" style="margin:.5rem 0 1rem">One flow only</h3>
+    <p class="lede" style="margin-top:0">Pick the single path a judge will walk through, build that, and cut everything else. A working two-step demo beats a broken six-step one.</p>
+    <div class="row" style="margin-top:1.5rem"><button class="btn" id="closeModal">Close</button></div>
+  </div>
+</div>
+
+<div class="palette" id="palette" role="dialog" aria-modal="true" aria-label="Cue palette">
+  <div class="palette__box">
+    <input class="palette__input" id="paletteInput" placeholder="Run a command…" autocomplete="off">
+    <ul class="palette__list" id="paletteList" role="listbox"></ul>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════════════════════════ */
+const $  = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+
+/* Persistent state. Survives a refresh mid-demo, which has saved
+   more hackathon projects than any framework. */
+const store = {
+  get(k, fallback){ try{ const v = localStorage.getItem('app:' + k); return v === null ? fallback : JSON.parse(v); }catch{ return fallback; } },
+  set(k, v){ try{ localStorage.setItem('app:' + k, JSON.stringify(v)); }catch{} }
+};
+
+/* Frames-based timecode. Only for genuinely temporal values. */
+function timecode(seconds, fps = 24){
+  const f = Math.floor((seconds % 1) * fps);
+  const s = Math.floor(seconds) % 60;
+  const m = Math.floor(seconds / 60) % 60;
+  const h = Math.floor(seconds / 3600);
+  return [h, m, s, f].map(n => String(n).padStart(2, '0')).join(':');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SOUND — a mechanical tick. No audio files. Off until asked for,
+   because a loud demo room is not the place for surprises.
+   ═══════════════════════════════════════════════════════════════ */
+let actx = null;
+let soundOn = store.get('sound', false);
+
+function tick(freq = 720, dur = 0.028, vol = 0.05){
+  if(!soundOn) return;
+  try{
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if(actx.state === 'suspended') actx.resume();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'square';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+    o.connect(g); g.connect(actx.destination);
+    o.start(); o.stop(actx.currentTime + dur);
+  }catch{}
+}
+
+const soundBtn = $('#soundBtn');
+function paintSound(){ soundBtn.textContent = soundOn ? 'Sound on' : 'Sound off'; }
+soundBtn.addEventListener('click', () => {
+  soundOn = !soundOn; store.set('sound', soundOn); paintSound(); tick(880);
+});
+paintSound();
+
+/* ═══════════════════════════════════════════════════════════════
+   TOAST
+   ═══════════════════════════════════════════════════════════════ */
+function toast(msg, cue = false){
+  const el = document.createElement('div');
+  el.className = 'toast' + (cue ? ' toast--cue' : '');
+  el.textContent = msg;
+  $('#toasts').append(el);
+  tick(cue ? 380 : 900);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 220); }, 2200);
+}
+$$('[data-toast]').forEach(b =>
+  b.addEventListener('click', () => toast(b.dataset.toast, 'toastCue' in b.dataset))
+);
+
+/* ═══════════════════════════════════════════════════════════════
+   SIGNATURE — THE WIPE
+   Pass any element with a [data-wipe-top] child.
+   ═══════════════════════════════════════════════════════════════ */
+function initWipe(el){
+  const radius = el.dataset.wipeRadius || '160px';
+  el.addEventListener('pointermove', e => {
+    const r = el.getBoundingClientRect();
+    el.style.setProperty('--wx', (e.clientX - r.left) + 'px');
+    el.style.setProperty('--wy', (e.clientY - r.top) + 'px');
+    el.style.setProperty('--wr', radius);
+  });
+  el.addEventListener('pointerleave', () => el.style.setProperty('--wr', '0px'));
+  /* Touch has no hover, so tap-to-pin instead. */
+  el.addEventListener('pointerdown', e => {
+    if(e.pointerType !== 'touch') return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty('--wx', (e.clientX - r.left) + 'px');
+    el.style.setProperty('--wy', (e.clientY - r.top) + 'px');
+    el.style.setProperty('--wr', radius);
+  });
+}
+$$('.wipe').forEach(initWipe);
+
+/* ═══════════════════════════════════════════════════════════════
+   REVEAL ON SCROLL
+   ═══════════════════════════════════════════════════════════════ */
+const io = new IntersectionObserver(entries => {
+  entries.forEach((en, i) => {
+    if(!en.isIntersecting) return;
+    setTimeout(() => en.target.setAttribute('data-in', ''), reduced ? 0 : i * 70);
+    io.unobserve(en.target);
+  });
+}, { threshold: .15 });
+$$('.reveal').forEach(el => io.observe(el));
+
+/* ═══════════════════════════════════════════════════════════════
+   MODAL
+   ═══════════════════════════════════════════════════════════════ */
+const veil = $('#veil');
+const openModal = () => { veil.setAttribute('data-open',''); tick(660); $('#closeModal').focus(); };
+const closeModal = () => veil.removeAttribute('data-open');
+$('#openModal')?.addEventListener('click', openModal);
+$('#closeModal')?.addEventListener('click', closeModal);
+veil.addEventListener('click', e => { if(e.target === veil) closeModal(); });
+
+/* ═══════════════════════════════════════════════════════════════
+   CUE PALETTE (⌘K / Ctrl+K)
+   Add to ACTIONS and it appears. Judges notice this.
+   ═══════════════════════════════════════════════════════════════ */
+const ACTIONS = [
+  { label: 'Toggle sound',    hint: 'S',  run: () => soundBtn.click() },
+  { label: 'Open the brief',  hint: '',   run: openModal },
+  { label: 'Replay count-in', hint: '',   run: () => countIn(true) },
+  { label: 'Clear filter',    hint: '',   run: () => { $('#filter').value = ''; renderRows(); } },
+  { label: 'Reset saved data',hint: '',   run: () => { localStorage.clear(); toast('Data reset', true); } },
+  { label: 'Scroll to top',   hint: '',   run: () => scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' }) }
+];
+
+const palette = $('#palette'), pInput = $('#paletteInput'), pList = $('#paletteList');
+let pIndex = 0, pShown = ACTIONS;
+
+$('#paletteHint').textContent = isMac ? '⌘K' : 'Ctrl K';
+
+function renderPalette(){
+  const q = pInput.value.toLowerCase().trim();
+  pShown = ACTIONS.filter(a => a.label.toLowerCase().includes(q));
+  pIndex = 0;
+  pList.innerHTML = pShown.length
+    ? pShown.map((a, i) => `<li class="palette__item" role="option" aria-selected="${i === 0}" data-i="${i}"><span>${a.label}</span><span class="tc">${a.hint}</span></li>`).join('')
+    : `<li class="palette__item"><span class="tc">No matching command</span></li>`;
+}
+function movePalette(step){
+  if(!pShown.length) return;
+  pIndex = (pIndex + step + pShown.length) % pShown.length;
+  $$('.palette__item', pList).forEach((li, i) => li.setAttribute('aria-selected', i === pIndex));
+  tick(560, .016, .03);
+}
+function runPalette(){
+  const a = pShown[pIndex];
+  closePalette();
+  if(a) setTimeout(a.run, 60);
+}
+function openPalette(){
+  palette.setAttribute('data-open','');
+  pInput.value = ''; renderPalette(); pInput.focus(); tick(760);
+}
+function closePalette(){ palette.removeAttribute('data-open'); }
+
+pInput.addEventListener('input', renderPalette);
+pList.addEventListener('click', e => {
+  const li = e.target.closest('[data-i]');
+  if(!li) return;
+  pIndex = +li.dataset.i; runPalette();
+});
+
+document.addEventListener('keydown', e => {
+  if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k'){ e.preventDefault(); openPalette(); return; }
+  if(e.key === 'Escape'){ closePalette(); closeModal(); return; }
+  if(!palette.hasAttribute('data-open')) return;
+  if(e.key === 'ArrowDown'){ e.preventDefault(); movePalette(1); }
+  if(e.key === 'ArrowUp'){ e.preventDefault(); movePalette(-1); }
+  if(e.key === 'Enter'){ e.preventDefault(); runPalette(); }
+});
+renderPalette();
+
+/* ═══════════════════════════════════════════════════════════════
+   DEMO DATA + TABLE — swap for the real thing tomorrow
+   ═══════════════════════════════════════════════════════════════ */
+const ROWS = [
+  { item: 'Intake form',      state: 'Active',  value: 42 },
+  { item: 'Routing rule',     state: 'Draft',   value: 17 },
+  { item: 'Escalation path',  state: 'Blocked', value: 5  },
+  { item: 'Daily digest',     state: 'Active',  value: 91 },
+  { item: 'Archive sweep',    state: 'Draft',   value: 28 }
+];
+const TAGCLASS = { Active: 'tag tag--amber', Blocked: 'tag tag--cue', Draft: 'tag' };
+
+function renderRows(){
+  const q = ($('#filter')?.value || '').toLowerCase().trim();
+  const shown = ROWS.filter(r => r.item.toLowerCase().includes(q) || r.state.toLowerCase().includes(q));
+  $('#tbody').innerHTML = shown.map(r =>
+    `<tr><td>${r.item}</td><td><span class="${TAGCLASS[r.state]}">${r.state}</span></td><td class="num" style="text-align:right">${r.value}</td></tr>`
+  ).join('');
+  $('#empty').hidden = shown.length > 0;
+}
+$('#filter')?.addEventListener('input', renderRows);
+$('#clearFilter')?.addEventListener('click', () => { $('#filter').value = ''; renderRows(); $('#filter').focus(); });
+renderRows();
+
+/* Scrub bar */
+const scrub = $('#scrub');
+scrub?.addEventListener('input', () => { $('#scrubTc').textContent = timecode(+scrub.value); });
+
+/* Elapsed clock — proves the page is alive during a demo */
+const t0 = Date.now();
+setInterval(() => {
+  const el = $('#clock');
+  if(el) el.textContent = timecode((Date.now() - t0) / 1000).slice(0, 8);
+}, 200);
+
+/* ═══════════════════════════════════════════════════════════════
+   COUNT-IN — once per session, any key skips
+   ═══════════════════════════════════════════════════════════════ */
+function countIn(force = false){
+  const el = $('#leader'), n = $('#leaderN');
+  if(reduced || (!force && sessionStorage.getItem('counted'))) return;
+  sessionStorage.setItem('counted', '1');
+  el.hidden = false;
+  let c = 3;
+  n.textContent = c;
+  tick(440, .05, .06);
+  const stop = () => { el.hidden = true; clearInterval(id); document.removeEventListener('keydown', stop); };
+  document.addEventListener('keydown', stop, { once: true });
+  const id = setInterval(() => {
+    c--;
+    if(c === 0){ stop(); tick(1200, .06, .06); return; }
+    n.textContent = c;
+    tick(440, .05, .06);
+  }, 380);
+}
+countIn();
+</script>
+</body>
+</html>
